@@ -1,0 +1,31 @@
+services:
+  shop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegram_clothing_store
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=file:/app/data/store.db
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8945886787:AAFlEHa8FFJ_H2zFQFsKDiMy9evNoivVzeI}
+      - TELEGRAM_WEBAPP_URL=${TELEGRAM_WEBAPP_URL:-http://localhost:3000}
+      - ADMIN_TELEGRAM_IDS=${ADMIN_TELEGRAM_IDS:-123456789}
+      - PAYMENT_PROVIDER=${PAYMENT_PROVIDER:-mock}
+      - PAYMENT_API_KEY=${PAYMENT_API_KEY:-}
+      - PAYMENT_SECRET=${PAYMENT_SECRET:-}
+    volumes:
+      # Persistent storage for SQLite database on host machine
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -156,7 +156,85 @@ npm start
 
 ---
 
-## 5. Переменные окружения (.env)
+## 5. Развертывание в Docker (Docker & Docker Compose)
+
+Проект полностью подготовлен для развертывания в Docker с использованием легковесного образа **Node 22 Alpine**, многоэтапной сборки (Multi-stage build), встроенной проверкой здоровья (`HEALTHCHECK`) и постоянным хранилищем данных (`volumes`).
+
+### 1. Быстрый запуск через Docker Compose:
+
+Убедитесь, что файл `.env` настроен (или отредактируйте параметры в `docker-compose.yml`), затем выполните одну команду:
+
+```bash
+docker compose up -d --build
+```
+
+Контейнер автоматически:
+- Соберет фронтенд через Vite в изолированном builder-слое.
+- Установит только production-зависимости.
+- Создаст базу данных в директории `./data` на хост-машине (данные сохраняются между перезапусками).
+- Запустит сервер на порту `3000`.
+
+### 2. Проверка работы контейнера:
+```bash
+# Проверить статус контейнера и healthcheck
+docker compose ps
+
+# Просмотр логов в реальном времени
+docker compose logs -f shop
+
+# Проверка health-эндпоинта внутри контейнера
+curl http://localhost:3000/health
+```
+
+### 3. Остановка и перезапуск:
+```bash
+# Остановка сервиса
+docker compose down
+
+# Перезапуск с пересборкой после изменений кода
+docker compose up -d --build
+```
+
+### 4. Ручная сборка и запуск через чистый Docker (без compose):
+```bash
+# 1. Сборка образа
+docker build -t telegram-shop:latest .
+
+# 2. Запуск контейнера с монтированием базы данных
+docker run -d \
+  --name telegram_shop \
+  -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  telegram-shop:latest
+```
+
+### 5. Настройка HTTPS и Reverse Proxy (Nginx) для Telegram Mini App:
+Telegram требует, чтобы Mini App открывался строго по безопасному протоколу **HTTPS**. Рекомендуется поставить перед Docker контейнером Nginx или Caddy с бесплатным SSL-сертификатом от Let's Encrypt:
+
+```nginx
+server {
+    server_name shop.your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+После выпуска SSL укажите `https://shop.your-domain.com` в @BotFather через команду `/setmenubutton` и в переменной `TELEGRAM_WEBAPP_URL`.
+
+---
+
+## 6. Переменные окружения (.env)
 
 | Переменная | Описание | Значение по умолчанию |
 |---|---|---|

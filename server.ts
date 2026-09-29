@@ -46,6 +46,9 @@ async function startServer() {
   // Mount API router
   app.use('/api', createApiRouter());
 
+  // Static assets (product images)
+  app.use('/src/assets', express.static(path.resolve(__dirname, 'src', 'assets')));
+
   if (!isProd) {
     // Development mode: Vite dev server with middleware mode
     const { createServer } = await import('vite');
