@@ -1,52 +1,59 @@
-# Multi-stage Dockerfile for Telegram Mini App Store
-# Stage 1: Build Frontend Assets
-FROM node:22-alpine AS builder
+# ==========================================
+# Multi-stage Dockerfile: Node 22 Debian Slim
+# Standard glibc runtime (zero musl/esbuild compatibility issues)
+# ==========================================
+
+# Stage 1: Build both client and server bundles
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install dependencies
-COPY package.json ./
+# Copy package descriptors
+COPY package*.json ./
+
+# Install all build dependencies
 RUN npm install
 
-# Copy source code and build client
+# Copy application source code
 COPY . .
+
+# Build Vite frontend (/app/dist) and esbuild backend (/app/dist-server)
 RUN npm run build
 
-# Stage 2: Production Runtime
-FROM node:22-alpine AS runner
+# Stage 2: Minimal Production Runtime
+FROM node:22-slim AS runner
 
 WORKDIR /app
 
 # Install curl for container health check
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL="file:/app/data/store.db"
 
-# Install production dependencies only
-COPY package.json ./
-RUN npm install --omit=dev
+# Copy package descriptors and install only runtime production packages
+COPY package*.json ./
+RUN npm install --omit=dev --ignore-scripts
 
-# Copy built frontend bundle from builder stage
+# Copy compiled frontend and backend bundles
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-server ./dist-server
+COPY --from=builder /app/src/assets ./src/assets
 
-# Copy backend server and source modules
-COPY --from=builder /app/server.ts ./server.ts
-COPY --from=builder /app/src ./src
+# Create directory for persistent SQLite database with write permissions
+RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Create directory for persistent SQLite database
-RUN mkdir -p /app/data
-
-# Persistent storage mount point for database
+# Persistent storage mount point
 VOLUME ["/app/data"]
 
 EXPOSE 3000
 
 # Health check using server /health endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=20s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 
-# Start the full-stack server
-CMD ["npm", "run", "start"]
+# Start production server using pure Node.js (no loaders or compilation)
+CMD ["node", "dist-server/index.js"]

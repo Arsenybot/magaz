@@ -15,7 +15,7 @@ services:
       - PORT=3000
       - DATABASE_URL=file:/app/data/store.db
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8945886787:AAFlEHa8FFJ_H2zFQFsKDiMy9evNoivVzeI}
-      - TELEGRAM_WEBAPP_URL=${TELEGRAM_WEBAPP_URL:-http://localhost:3000}
+      - TELEGRAM_WEBAPP_URL=${TELEGRAM_WEBAPP_URL:-}
       - ADMIN_TELEGRAM_IDS=${ADMIN_TELEGRAM_IDS:-123456789}
       - PAYMENT_PROVIDER=${PAYMENT_PROVIDER:-mock}
       - PAYMENT_API_KEY=${PAYMENT_API_KEY:-}
@@ -25,7 +25,7 @@ services:
       - ./data:/app/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
+      interval: 20s
+      timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 5s

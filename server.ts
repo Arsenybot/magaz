@@ -46,8 +46,12 @@ async function startServer() {
   // Mount API router
   app.use('/api', createApiRouter());
 
+  const rootDir = process.cwd();
+  const assetsPath = path.resolve(rootDir, 'src', 'assets');
+  const distPath = path.resolve(rootDir, 'dist');
+
   // Static assets (product images)
-  app.use('/src/assets', express.static(path.resolve(__dirname, 'src', 'assets')));
+  app.use('/src/assets', express.static(assetsPath));
 
   if (!isProd) {
     // Development mode: Vite dev server with middleware mode
@@ -62,7 +66,6 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Production mode: Serve compiled assets
-    const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.resolve(distPath, 'index.html'));
