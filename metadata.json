@@ -1,0 +1,6 @@
+{
+  "name": "Telegram Mini App — Магазин Одежды",
+  "description": "Полнофункциональный Telegram Mini App интернет-магазин одежды с каталогом, корзиной, серверным чекаутом, управлением остатками, платежами и админ-панелью.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
