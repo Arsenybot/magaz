@@ -6,7 +6,7 @@ services:
     container_name: telegram_clothing_store
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "3000:3000"
     env_file:
       - path: .env
         required: false
@@ -21,11 +21,9 @@ services:
       - PAYMENT_API_KEY=${PAYMENT_API_KEY:-}
       - PAYMENT_SECRET=${PAYMENT_SECRET:-}
     volumes:
-      # Persistent storage for SQLite database on host machine
-      - ./data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+      # Persistent Docker volume (сохраняет базу данных и заказы при любых редеплоях)
+      - store_data:/app/data
+
+volumes:
+  store_data:
+    name: telegram_clothing_store_data

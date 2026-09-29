@@ -1,59 +1,48 @@
-# ==========================================
-# Multi-stage Dockerfile: Node 22 Debian Slim
-# Standard glibc runtime (zero musl/esbuild compatibility issues)
-# ==========================================
-
-# Stage 1: Build both client and server bundles
-FROM node:22-slim AS builder
+# Multi-stage production-ready Dockerfile for Node.js + TypeScript (Telegram Bot + Mini App Store)
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package descriptors
+# Install dependencies needed for build
 COPY package*.json ./
+COPY tsconfig*.json ./
+RUN npm install --legacy-peer-deps
 
-# Install all build dependencies
-RUN npm install
+# Copy source code and build config
+COPY index.html ./
+COPY vite.config.ts ./
+COPY server.ts ./
+COPY src ./src
 
-# Copy application source code
-COPY . .
-
-# Build Vite frontend (/app/dist) and esbuild backend (/app/dist-server)
+# Build frontend (Vite) and server (esbuild bundle -> dist/server.cjs)
 RUN npm run build
 
-# Stage 2: Minimal Production Runtime
-FROM node:22-slim AS runner
+# --- Production Runner Stage ---
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install curl for container health check
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-  && rm -rf /var/lib/apt/lists/*
-
-# Set production environment
+# Default environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL="file:/app/data/store.db"
 
-# Copy package descriptors and install only runtime production packages
+# Install production dependencies only
 COPY package*.json ./
-RUN npm install --omit=dev --ignore-scripts
+RUN npm install --omit=dev --legacy-peer-deps && npm cache clean --force
 
-# Copy compiled frontend and backend bundles
+# Copy compiled bundles from builder stage (contains frontend SPA, assets and server.cjs)
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/dist-server ./dist-server
-COPY --from=builder /app/src/assets ./src/assets
 
-# Create directory for persistent SQLite database with write permissions
-RUN mkdir -p /app/data && chmod 777 /app/data
+# Create persistent data directory for SQLite
+RUN mkdir -p /app/data
 
-# Persistent storage mount point
-VOLUME ["/app/data"]
-
+# Expose port (Cloud.ru Container Apps, VPS or Webhook)
 EXPOSE 3000
 
-# Health check using server /health endpoint
-HEALTHCHECK --interval=20s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT}/health || exit 1
 
-# Start production server using pure Node.js (no loaders or compilation)
-CMD ["node", "dist-server/index.js"]
+# Start server (runs node dist/server.cjs which starts Telegram Bot & Mini App)
+CMD ["node", "dist/server.cjs"]

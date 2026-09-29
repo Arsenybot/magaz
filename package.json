@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build:client": "vite build",
-    "build:server": "esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-server/index.js",
+    "build:client": "vite build && mkdir -p dist/src && cp -r src/assets dist/src/assets",
+    "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build": "npm run build:client && npm run build:server",
-    "start": "NODE_ENV=production node dist-server/index.js",
+    "start": "NODE_ENV=production node dist/server.cjs",
     "preview": "vite preview",
-    "clean": "rm -rf dist dist-server",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "tsx tests/run-tests.ts"
   },

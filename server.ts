@@ -1,15 +1,12 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import { createApiRouter } from './src/api/routes.ts';
 import { getDatabase } from './src/database/db.ts';
 import { seedDatabase } from './src/database/seed.ts';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -24,8 +21,8 @@ async function startServer() {
   const db = getDatabase();
   seedDatabase(db);
 
-  // Health check endpoint (Requirement 29)
-  app.get('/health', (req, res) => {
+  // Health check handler (Requirement 29: supports /health and /api/health)
+  const healthHandler = (_req: express.Request, res: express.Response) => {
     try {
       const dbCheck = db.prepare('SELECT 1 as ok').get() as { ok: number };
       res.json({
@@ -41,14 +38,19 @@ async function startServer() {
         message: err.message,
       });
     }
-  });
+  };
+
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
 
   // Mount API router
   app.use('/api', createApiRouter());
 
   const rootDir = process.cwd();
-  const assetsPath = path.resolve(rootDir, 'src', 'assets');
   const distPath = path.resolve(rootDir, 'dist');
+  const distAssets = path.resolve(distPath, 'src', 'assets');
+  const srcAssets = path.resolve(rootDir, 'src', 'assets');
+  const assetsPath = fs.existsSync(distAssets) ? distAssets : srcAssets;
 
   // Static assets (product images)
   app.use('/src/assets', express.static(assetsPath));
